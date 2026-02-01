@@ -2,13 +2,28 @@ export const config = {
   runtime: "edge",
 };
 
-export default async function handler(req) {
-  if (req.method !== "POST") {
-    return new Response("Method not allowed", { status: 405 });
+export default async function handler(request) {
+  // Handle CORS preflight
+  if (request.method === "OPTIONS") {
+    return new Response(null, {
+      status: 200,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+      },
+    });
+  }
+
+  if (request.method !== "POST") {
+    return new Response(JSON.stringify({ error: "Method not allowed" }), { 
+      status: 405,
+      headers: { "Content-Type": "application/json" }
+    });
   }
 
   try {
-    const { name, email, firm, message } = await req.json();
+    const { name, email, firm, message } = await request.json();
 
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -30,7 +45,7 @@ export default async function handler(req) {
             <hr style="border: none; border-top: 1px solid #333; margin: 20px 0;">
             <p style="white-space: pre-wrap;">${message}</p>
             <hr style="border: none; border-top: 1px solid #333; margin: 20px 0;">
-            <p style="color: #666; font-size: 12px;">Sent from ventures.sellfast.now</p>
+            <p style="color: #666; font-size: 12px;">Sent from SellFast Ventures</p>
           </div>
         `,
       }),
@@ -38,17 +53,25 @@ export default async function handler(req) {
 
     if (!response.ok) {
       const error = await response.text();
+      console.error("Resend error:", error);
       throw new Error(error);
     }
 
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*"
+      },
     });
   } catch (error) {
+    console.error("Contact form error:", error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*"
+      },
     });
   }
 }
